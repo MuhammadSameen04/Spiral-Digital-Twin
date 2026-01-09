@@ -214,40 +214,71 @@ with tab_theory:
     st.latex(r"Mass\_Pull = 10\% + (Splitter\_Position \times 10\%)")
 
 with tab_export:
-    def make_report(df, rate, conc_m, d80_v, total_r, split_p):
+    st.subheader("📥 Export Executive Report")
+    st.info("Generating this report will include the Mineral Table, Bar Charts, and the Profitability Heatmap.")
+
+    def make_complete_report(df, rate, conc_m, d80_v, total_r, split_p, grid, x_vals, y_vals):
         doc = Document()
         doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
-        doc.add_paragraph(f"Feed: {rate} tph | d80: {d80_v} um | Splitter: {split_p}")
         
-        fig_r, ax_r = plt.subplots()
-        ax_r.pie(df["Revenue $/hr"], labels=df["Mineral"], autopct='%1.1f%%')
-        img_s = BytesIO()
-        plt.savefig(img_s, format='png')
-        img_s.seek(0)
-        doc.add_picture(img_s, width=Inches(5))
+        # 1. Summary Section
+        doc.add_heading('1. Operational Summary', level=1)
+        doc.add_paragraph(f"Feed Rate: {rate} tph")
+        doc.add_paragraph(f"Feed d80: {d80_v} µm")
+        doc.add_paragraph(f"Splitter Position: {split_p}")
+        doc.add_paragraph(f"Total Revenue: ${total_r:,.2f}/hr")
+
+        # 2. Mineral Data Table
+        doc.add_heading('2. Mineral Recovery & Grade Data', level=1)
+        table = doc.add_table(rows=1, cols=len(df.columns))
+        table.style = 'Table Grid'
+        hdr_cells = table.rows[0].cells
+        for i, col in enumerate(df.columns):
+            hdr_cells[i].text = col
+        for _, row in df.iterrows():
+            row_cells = table.add_row().cells
+            for i, val in enumerate(row):
+                row_cells[i].text = str(val)
+
+        # 3. Bar Chart & Visuals
+        doc.add_heading('3. Performance Visuals', level=1)
         
+        # Saving Bar Chart to Buffer
+        fig_bar, ax_bar = plt.subplots(figsize=(6, 4))
+        ax_bar.bar(df["Mineral"], df["Recovery %"], color='teal')
+        ax_bar.set_title("Recovery % by Mineral")
+        buf_bar = BytesIO()
+        plt.savefig(buf_bar, format='png')
+        buf_bar.seek(0)
+        doc.add_picture(buf_bar, width=Inches(5))
+        plt.close(fig_bar)
+
+        # 4. Profitability Heatmap
+        doc.add_heading('4. Economic Heatmap (Profitability)', level=1)
+        fig_h, ax_h = plt.subplots(figsize=(8, 5))
+        sns.heatmap(grid, xticklabels=np.round(y_vals, 1), yticklabels=np.round(x_vals, 0), cmap="RdYlGn", ax=ax_h)
+        ax_h.set_title("Feed Rate vs Splitter Profitability")
+        buf_heat = BytesIO()
+        plt.savefig(buf_heat, format='png')
+        buf_heat.seek(0)
+        doc.add_picture(buf_heat, width=Inches(5))
+        plt.close(fig_h)
+
+        # Save Final Document
         bio = BytesIO()
         doc.save(bio)
         return bio.getvalue()
 
+    # Download Button
+    report_data = make_complete_report(
+        df_res, f_rate, c_mass, d80, total_revenue, splitter_pos, 
+        grid_data, x_labels, y_labels
+    )
+    
     st.download_button(
         label="📥 Download Full Executive Report (Word)",
-        data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
-        file_name="Spiral_Digital_Twin_Report.docx",
-        key="final_report_button"
+        data=report_data,
+        file_name="Spiral_Detailed_Report.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        key="download_report_final"
     )
-
-st.write("---")
-st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
-grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
-fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
-sns.heatmap(grid_data, xticklabels=np.round(y_labels, 1), yticklabels=np.round(x_labels, 0), cmap="RdYlGn", ax=ax_heat)
-st.pyplot(fig_heat)
-
-st.markdown("### 🧠 KPI Status Check")
-for k, v in kpi_status.items():
-    if v: st.success(f"✅ {k}")
-    else: st.error(f"❌ {k}")
-
-
-
