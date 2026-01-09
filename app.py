@@ -73,6 +73,9 @@ target_margin = st.sidebar.slider("Target Profit Margin (%)", 0, 60, 25)
 
 # ----------- ADDITION: KPI EVALUATION -----------
 
+total_revenue = 0
+profit_hr = 0
+
 actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
 
 kpi_status = {
@@ -271,6 +274,7 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
 
