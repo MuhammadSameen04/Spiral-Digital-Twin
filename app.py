@@ -122,28 +122,10 @@ def ultra_engine(rate, targets, prices, split_pos, size_d80):
         })
     return pd.DataFrame(results), conc_mass, total_rev
 
+# --- PEHLE ENGINE CHALAYEIN ---
 df_res, c_mass, total_revenue = ultra_engine(f_rate, user_targets, user_prices, splitter_pos, d80)
-def generate_heatmap_data(targets, prices, d80, solids):
-    # Variables for heatmap axis
-    rates = np.linspace(100, 500, 10)  # Feed Rate range
-    splits = np.linspace(0, 2, 10)     # Splitter range
-    grid = np.zeros((10, 10))
 
-    for i, r in enumerate(rates):
-        for j, s in enumerate(splits):
-            # Engine ko call karke profit nikalna
-            _, _, total_rev = ultra_engine(r, targets, prices, s, d80)
-            
-            # OPEX Calculate karna usi logic se jo aapne niche likhi hai
-            p_cost = power_kw * power_rate
-            m_cost_hr = r * mining_cost
-            total_opex = labour_cost + p_cost + water_cost + maintenance_cost + m_cost_hr + lease_tax
-            
-            grid[i, j] = total_rev - total_opex
-            
-    return grid, rates, splits
-
-# ----------- ADDITION: ECONOMICS CALCULATION -----------
+# --- PHIR ECONOMICS CALCULATE KAREIN ---
 power_cost = power_kw * power_rate
 mining_cost_hr = f_rate * mining_cost
 
@@ -157,8 +139,29 @@ total_opex = (
 )
 
 profit_hr = total_revenue - total_opex
+
+# Ab total_revenue define ho chuka hai, margin calculate ho jayega
+actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
+
+kpi_status = {
+    "Throughput OK": f_rate >= target_throughput,
+    "Profit Margin OK": actual_margin >= target_margin,
+    "Profit/hr OK": profit_hr >= target_profit_hr
+}
 cost_per_ton = total_opex / f_rate
 profit_per_ton = profit_hr / f_rate
+
+# Heatmap function (Iske variables economics ke baad aane chahiye)
+def generate_heatmap_data(targets, prices, d80, solids):
+    rates = np.linspace(100, 500, 10)
+    splits = np.linspace(0, 2, 10)
+    grid = np.zeros((10, 10))
+    for i, r in enumerate(rates):
+        for j, s in enumerate(splits):
+            _, _, t_rev = ultra_engine(r, targets, prices, s, d80)
+            t_opex = labour_cost + (power_kw * power_rate) + water_cost + maintenance_cost + (r * mining_cost) + lease_tax
+            grid[i, j] = t_rev - t_opex
+    return grid, rates, splits
 
 # --- 5. TABS ---
 tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Equations", "📥 Export Report"])
@@ -269,5 +272,6 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
