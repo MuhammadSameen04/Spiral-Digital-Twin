@@ -175,7 +175,61 @@ def get_expert_insights(total_rev, current_rec_avg):
     st.subheader("📐 Governing Equations")
     st.latex(r"M_{conc} = M_{feed} \times (0.10 + 0.10 \times \text{Splitter})")
     st.latex(r"Revenue\ Sensitivity = \sum (Grade_i \times Price_i) \times 0.01")
+# --- IMPORTANT: PRE-CALCULATE HEATMAP DATA FOR REPORT ---
+# Isko Tabs se pehle rakhein taaki report download mein error na aaye
+grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
 
+# --- 5. TABS & VISUALS ---
+tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Digitizer", "📥 Export Report"])
+
+# ... (tab_viz aur tab_theory ka code wese hi rahega) ...
+
+with tab_export:
+    st.subheader("📥 Export Executive Report")
+    
+    def make_complete_report(df, rate, conc_m, d80_v, total_r, split_p, grid, x_v, y_v):
+        doc = Document()
+        doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
+        
+        # 1. Table
+        doc.add_heading('Mineral Recovery Data', level=1)
+        table = doc.add_table(rows=1, cols=len(df.columns))
+        table.style = 'Table Grid'
+        for i, col in enumerate(df.columns):
+            table.rows[0].cells[i].text = col
+        for _, row in df.iterrows():
+            cells = table.add_row().cells
+            for i, val in enumerate(row):
+                cells[i].text = str(val)
+
+        # 2. Bar Chart
+        plt.figure(figsize=(6, 4))
+        plt.bar(df["Mineral"], df["Recovery %"], color='teal')
+        buf_bar = BytesIO()
+        plt.savefig(buf_bar, format='png')
+        doc.add_picture(buf_bar, width=Inches(4))
+        plt.close()
+
+        # 3. Heatmap
+        doc.add_heading('Economic Heatmap', level=1)
+        plt.figure(figsize=(8, 5))
+        sns.heatmap(grid, xticklabels=np.round(y_v, 1), yticklabels=np.round(x_v, 0), cmap="RdYlGn")
+        buf_heat = BytesIO()
+        plt.savefig(buf_heat, format='png')
+        doc.add_picture(buf_heat, width=Inches(5))
+        plt.close()
+
+        bio = BytesIO()
+        doc.save(bio)
+        return bio.getvalue()
+
+    # Ab grid_data available hai, error nahi aayega
+    report_btn = st.download_button(
+        label="📥 Download Full Report (Word)",
+        data=make_complete_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos, grid_data, x_labels, y_labels),
+        file_name="Spiral_Digital_Twin_Report.docx",
+        key="report_dl_final"
+    )
 # --- 5. TABS & VISUALS ---
 tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Equations", "📥 Export Report"])
 
@@ -282,3 +336,4 @@ with tab_export:
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         key="download_report_final"
     )
+
