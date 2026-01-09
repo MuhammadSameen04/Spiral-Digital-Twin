@@ -72,6 +72,19 @@ st.sidebar.markdown("### 📈 Margin Control")
 target_margin = st.sidebar.slider("Target Profit Margin (%)", 0, 60, 25)
 
 # ----------- ADDITION: KPI EVALUATION -----------
+# ==============================
+# DEFAULT VALUES (CEP SAFE)
+# ==============================
+
+# Feed & process
+f_rate = 0.0
+
+# Targets (user adjustable later)
+target_throughput = 0.0
+target_margin = 0.0
+
+# Performance indicators
+actual_margin = 0.0
 
 total_revenue = 0
 profit_hr = 0
@@ -274,6 +287,7 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
 
