@@ -253,11 +253,19 @@ st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka m
 
    # --- Is niche wale block ko check karein aur "key" add karein ---
 st.download_button(
-    label="📥 Download Full Executive Report (Word)",
-    data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
-    file_name="Spiral_Digital_Twin_Report.docx",
-    key="final_report_button",
-) # <--- Ye bracket lazmi hai!
+    label="📥 Download Full Executive Report (Word)",
+    data=make_report(
+        df_res,
+        f_rate,
+        c_mass,
+        d80,
+        total_revenue,
+        splitter_pos
+    ),
+    file_name="Spiral_Digital_Twin_Report.docx",
+    key="final_report_button"
+)
+
 
 st.markdown("### 🧠 KPI Status Check")
 
@@ -266,4 +274,5 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
