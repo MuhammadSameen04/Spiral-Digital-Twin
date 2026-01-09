@@ -204,11 +204,14 @@ with tab_theory:
     st.info(f"Operating at {f_rate} tph with splitter position {splitter_pos}")
 
 with tab_export:
+    st.subheader("📥 Export Engineering Report")
+    
     def make_report(df, rate, conc_m, d80_v, total_r, split_p):
         doc = Document()
         doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
         doc.add_paragraph(f"Feed: {rate} tph | d80: {d80_v} um | Splitter: {split_p}")
         
+        # Plotting for Report
         fig_r, ax_r = plt.subplots()
         ax_r.pie(df["Revenue $/hr"], labels=df["Mineral"], autopct='%1.1f%%')
         img_s = BytesIO()
@@ -216,6 +219,7 @@ with tab_export:
         img_s.seek(0)
         doc.add_picture(img_s, width=Inches(5))
         
+        # Table for Report
         t = doc.add_table(rows=1, cols=len(df.columns))
         t.style = 'Table Grid'
         for i, col in enumerate(df.columns):
@@ -229,13 +233,22 @@ with tab_export:
         doc.save(bio)
         return bio.getvalue()
 
+    # Report Download Button
+    st.download_button(
+        label="📥 Download Full Executive Report (Word)",
+        data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
+        file_name="Spiral_Digital_Twin_Report.docx",
+        key="final_report_button"
+    )
+
+# --- Ye sections Tabs se bahar hain (Main Page par niche nazar aayenge) ---
 st.write("---")
 st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
 
 # Data generate karna
 grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
 
-# Plotting
+# Plotting Heatmap
 fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
 sns.heatmap(
     grid_data, 
@@ -251,34 +264,9 @@ st.pyplot(fig_heat)
 
 st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka matlab hai ke aapka OPEX revenue se zyada hai.")
 
-   # --- Is niche wale block ko check karein aur "key" add karein ---
-st.download_button(
-    label="📥 Download Full Executive Report (Word)",
-    data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
-    file_name="Spiral_Digital_Twin_Report.docx",
-    key="final_report_button",
-) # <--- Ye bracket lazmi hai!
 st.markdown("### 🧠 KPI Status Check")
-
 for k, v in kpi_status.items():
     if v:
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
