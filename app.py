@@ -8,6 +8,35 @@ from docx.shared import Inches
 from io import BytesIO
 import base64
 
+# =====================================
+# DEFAULT INITIALIZATION (CRITICAL)
+# =====================================
+
+# Feed & throughput
+f_rate = 0.0
+
+# Financials
+total_revenue = 0.0
+profit_hr = 0.0
+actual_margin = 0.0
+
+# Targets (user adjustable)
+target_throughput = 0.0
+target_profit_margin = 0.0
+st.sidebar.header("Target KPIs")
+
+target_throughput = st.sidebar.number_input(
+    "Target Throughput (tph)",
+    min_value=0.0,
+    value=300.0
+)
+
+target_profit_margin = st.sidebar.number_input(
+    "Target Profit Margin (%)",
+    min_value=0.0,
+    value=20.0
+)
+
 # --- MAIN PAGE HEADERS ---
 st.title("🌀 Ultra Digital Twin: Attock Spiral Concentrator")
 st.markdown("### Process Optimization, Economics & KPI Performance Dashboard")
@@ -287,6 +316,7 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
 
