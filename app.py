@@ -145,6 +145,7 @@ def get_expert_insights(total_rev, current_rec_avg):
     # 1% Recovery Increase Calculation
     extra_profit_per_1pct = total_rev * 0.01
     return extra_profit_per_1pct
+    
 with tab_theory:
     st.header("🔬 Engineering Intelligence & Digitizer")
     
@@ -250,4 +251,5 @@ st.markdown("### 🧠 KPI Status Check")
 for k, v in kpi_status.items():
     if v: st.success(f"✅ {k}")
     else: st.error(f"❌ {k}")
+
 
