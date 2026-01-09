@@ -204,54 +204,79 @@ with tab_theory:
     st.info(f"Operating at {f_rate} tph with splitter position {splitter_pos}")
 
 with tab_export:
-    def make_report(df, rate, conc_m, d80_v, total_r, split_p):
-        doc = Document()
-        doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
-        doc.add_paragraph(f"Feed: {rate} tph | d80: {d80_v} um | Splitter: {split_p}")
-        
-        fig_r, ax_r = plt.subplots()
-        ax_r.pie(df["Revenue $/hr"], labels=df["Mineral"], autopct='%1.1f%%')
-        img_s = BytesIO()
-        plt.savefig(img_s, format='png')
-        img_s.seek(0)
-        doc.add_picture(img_s, width=Inches(5))
-        
-        t = doc.add_table(rows=1, cols=len(df.columns))
-        t.style = 'Table Grid'
-        for i, col in enumerate(df.columns):
-            t.cell(0, i).text = col
-        for _, row in df.iterrows():
-            cells = t.add_row().cells
-            for i, val in enumerate(row):
-                cells[i].text = str(val)
-        
-        bio = BytesIO()
-        doc.save(bio)
-        return bio.getvalue()
+
+    def make_report(df, rate, conc_m, d80_v, total_r, split_p):
+        doc = Document()
+        doc.add_heading("Engineering Report: Spiral Digital Twin", 0)
+
+        doc.add_paragraph(
+            f"Feed Rate: {rate} tph | d80: {d80_v} µm | Splitter Position: {split_p}"
+        )
+
+        # Revenue Pie Chart
+        fig_r, ax_r = plt.subplots()
+        ax_r.pie(
+            df["Revenue $/hr"],
+            labels=df["Mineral"],
+            autopct="%1.1f%%"
+        )
+
+        img_s = BytesIO()
+        plt.savefig(img_s, format="png", bbox_inches="tight")
+        plt.close(fig_r)
+        img_s.seek(0)
+
+        doc.add_picture(img_s, width=Inches(5))
+
+        # Table
+        table = doc.add_table(rows=1, cols=len(df.columns))
+        table.style = "Table Grid"
+
+        for i, col in enumerate(df.columns):
+            table.cell(0, i).text = str(col)
+
+        for _, row in df.iterrows():
+            cells = table.add_row().cells
+            for i, val in enumerate(row):
+                cells[i].text = str(val)
+
+        bio = BytesIO()
+        doc.save(bio)
+        bio.seek(0)
+        return bio.getvalue()
+
 
 st.write("---")
 st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
 
-# Data generate karna
-grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
+# Generate data
+grid_data, x_labels, y_labels = generate_heatmap_data(
+    user_targets,
+    user_prices,
+    d80,
+    solids
+)
 
-# Plotting
+# Plot heatmap
 fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
 sns.heatmap(
-    grid_data, 
-    annot=False, 
-    xticklabels=np.round(y_labels, 1), 
-    yticklabels=np.round(x_labels, 0), 
-    cmap="RdYlGn", 
-    ax=ax_heat
+    grid_data,
+    annot=False,
+    xticklabels=np.round(y_labels, 1),
+    yticklabels=np.round(x_labels, 0),
+    cmap="RdYlGn",
+    ax=ax_heat
 )
+
 ax_heat.set_xlabel("Splitter Position")
 ax_heat.set_ylabel("Feed Rate (tph)")
 st.pyplot(fig_heat)
 
-st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka matlab hai ke aapka OPEX revenue se zyada hai.")
+st.info(
+    "💡 **Tip:** Green area sab se zyada profit dikhata hai. "
+    "Red area ka matlab hai ke OPEX, revenue se zyada hai."
+)
 
-   # --- Is niche wale block ko check karein aur "key" add karein ---
 st.download_button(
     label="📥 Download Full Executive Report (Word)",
     data=make_report(
@@ -274,5 +299,6 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
