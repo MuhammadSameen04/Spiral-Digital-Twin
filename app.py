@@ -69,7 +69,6 @@ mining_cost = st.sidebar.number_input("Mining Cost ($/ton)", value=8.0)
 lease_tax = st.sidebar.number_input("Lease / Rent / Taxes ($/hr)", value=25.0)
 
 st.sidebar.markdown("### 📈 Margin Control")
-target_margin = st.sidebar.slider("Target Profit Margin (%)", 0, 60, 25)
 
 # ----------- ADDITION: KPI EVALUATION -----------
 
@@ -272,5 +271,6 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
