@@ -42,6 +42,14 @@ st.sidebar.markdown("---")
 st.sidebar.header("🎯 Recovery Targets (%)")
 user_targets = {m: st.sidebar.slider(f"{m} Recovery", 0.0, 100.0, float(v)) for m, v in BASE_REC.items()}
 
+st.sidebar.markdown("---")
+st.sidebar.header("🎯 Concentrate Grade Targets")
+# Har mineral ke liye target grade slider
+user_grade_targets = {
+    m: st.sidebar.slider(f"{m} Target Grade", 0.0, 100.0, 5.0 if m != "Gold" else 15.0) 
+    for m in FEED_GRADES.keys()
+}
+
 st.sidebar.header("💰 Economic Pricing ($)")
 user_prices = {
     "Gold": st.sidebar.number_input("Gold ($/g)", value=80.0),
@@ -225,4 +233,5 @@ st.markdown("### 🧠 KPI Status Check")
 for k, v in kpi_status.items():
     if v: st.success(f"✅ {k}")
     else: st.error(f"❌ {k}")
+
 
