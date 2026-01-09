@@ -42,9 +42,6 @@ st.sidebar.markdown("---")
 st.sidebar.header("🎯 Recovery Targets (%)")
 user_targets = {m: st.sidebar.slider(f"{m} Recovery", 0.0, 100.0, float(v)) for m, v in BASE_REC.items()}
 
-st.sidebar.header("🎯 Target Grade Settings")
-user_grade_targets = {m: st.sidebar.slider(f"{m} Target Grade", 0.0, 50.0, 5.0) for m in FEED_GRADES.keys()}
-
 st.sidebar.header("💰 Economic Pricing ($)")
 user_prices = {
     "Gold": st.sidebar.number_input("Gold ($/g)", value=80.0),
@@ -74,10 +71,8 @@ def ultra_engine(rate, targets, prices, split_pos, size_d80):
     size_factor = 1.0
     if size_d80 < 100: size_factor = size_d80 / 100
     elif size_d80 > 400: size_factor = max(0.4, 1.0 - (size_d80 - 400) / 800)
-    
     mass_pull = 0.10 + (split_pos * 0.10)
     conc_mass = rate * mass_pull
-    
     results = []
     total_rev = 0
     for m, rec in targets.items():
@@ -88,38 +83,11 @@ def ultra_engine(rate, targets, prices, split_pos, size_d80):
         rev = conc_m * prices[m]
         total_rev += rev
         results.append({
-            "Mineral": m,
-            "Recovery %": round(eff_rec, 2),
-            "Conc Grade": round(grade, 4),
-            "Revenue $/hr": round(rev, 2)
+            "Mineral": m, "Recovery %": round(eff_rec, 2), 
+            "Conc Grade": round(grade, 4), "Revenue $/hr": round(rev, 2)
         })
     return pd.DataFrame(results), conc_mass, total_rev
 
-# --- CALCULATIONS (ORDER FIXED HERE) ---
-
-# 1. Run Engine first to get revenue
-df_res, c_mass, total_revenue = ultra_engine(f_rate, user_targets, user_prices, splitter_pos, d80)
-
-# 2. Calculate OPEX
-power_cost = power_kw * power_rate
-mining_cost_hr = f_rate * mining_cost
-total_opex = (labour_cost + power_cost + water_cost + maintenance_cost + mining_cost_hr + lease_tax)
-
-# 3. Calculate Profit and Margin (Now variables are defined)
-profit_hr = total_revenue - total_opex
-actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
-
-# 4. KPI Status check using correct variable names
-kpi_status = {
-    "Throughput OK": f_rate >= target_throughput,
-    "Profit Margin OK": actual_margin >= target_margin,
-    "Profit/hr OK": profit_hr >= target_profit_hr
-}
-
-cost_per_ton = total_opex / f_rate if f_rate > 0 else 0
-profit_per_ton = profit_hr / f_rate if f_rate > 0 else 0
-
-# Heatmap function
 def generate_heatmap_data(targets, prices, d80, solids):
     rates = np.linspace(100, 500, 10)
     splits = np.linspace(0, 2, 10)
@@ -130,123 +98,43 @@ def generate_heatmap_data(targets, prices, d80, solids):
             t_opex = labour_cost + (power_kw * power_rate) + water_cost + maintenance_cost + (r * mining_cost) + lease_tax
             grid[i, j] = t_rev - t_opex
     return grid, rates, splits
-    
-# --- ADVANCED DIGITIZER LOGIC ---
+
 def run_digitizer(df, splitter, rate):
     d_df = df.copy()
-    # Logic: Splitter movement affects Grade and Recovery inversely
     d_df["Digitized Grade"] = d_df["Conc Grade"] * (1 + (splitter * 0.02))
     d_df["Digitized Recovery"] = d_df["Recovery %"] * (1 - (splitter * 0.01))
-    d_df["Digitized TPH"] = (rate * (d_df["Digitized Recovery"]/100)) * (FEED_GRADES["Gold"]/100) # Simplified
     return d_df
 
-# --- SENSITIVITY INSIGHTS ---
-def get_expert_insights(total_rev, current_rec_avg):
-    # 1% Recovery Increase Calculation
-    extra_profit_per_1pct = total_rev * 0.01
-    return extra_profit_per_1pct
-    
-    # --- EXPERT INSIGHTS SECTION ---
-    st.subheader("💡 Expert Insights (Financial Sensitivity)")
-    extra_money = get_expert_insights(total_revenue, df_res["Recovery %"].mean())
-    
-    col_ins1, col_ins2 = st.columns(2)
-    with col_ins1:
-        st.metric("Profit Boost (per +1% Recovery)", f"${extra_money:,.2f}/hr")
-        st.write(f"Agar aap plant ki overall recovery **1%** barha lete hain, toh aapka munafa mahana **${extra_money*24*30:,.0f}** barh sakta hai.")
-    
-    with col_ins2:
-        breakeven_tph = total_opex / (total_revenue / f_rate) if total_revenue > 0 else 0
-        st.metric("Break-even Throughput", f"{breakeven_tph:.1f} tph")
-        st.write(f"Aapko kam az kam **{breakeven_tph:.1f} tph** feed rate chahiye taaki aapka OPEX cover ho sake.")
+# --- CALCULATIONS ---
+df_res, c_mass, total_revenue = ultra_engine(f_rate, user_targets, user_prices, splitter_pos, d80)
+total_opex = (labour_cost + (power_kw * power_rate) + water_cost + maintenance_cost + (f_rate * mining_cost) + lease_tax)
+profit_hr = total_revenue - total_opex
+actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
+cost_per_ton = total_opex / f_rate if f_rate > 0 else 0
+profit_per_ton = profit_hr / f_rate if f_rate > 0 else 0
 
-    # --- DIGITIZER SECTION ---
-    st.write("---")
-    st.subheader("🔢 Digital Twin Digitizer (Grade-Recovery-TPH)")
-    st.caption("Adjusted values based on current Splitter Position and Feed Rate")
-    
-    digitized_results = run_digitizer(df_res, splitter_pos, f_rate)
-    
-    # Display Digitized Table
-    st.table(digitized_results[["Mineral", "Digitized Grade", "Digitized Recovery", "Revenue $/hr"]])
+kpi_status = {
+    "Throughput OK": f_rate >= target_throughput,
+    "Profit Margin OK": actual_margin >= target_margin,
+    "Profit/hr OK": profit_hr >= target_profit_hr
+}
 
-    # --- EQUATIONS ---
-    st.write("---")
-    st.subheader("📐 Governing Equations")
-    st.latex(r"M_{conc} = M_{feed} \times (0.10 + 0.10 \times \text{Splitter})")
-    st.latex(r"Revenue\ Sensitivity = \sum (Grade_i \times Price_i) \times 0.01")
-# --- IMPORTANT: PRE-CALCULATE HEATMAP DATA FOR REPORT ---
-# Isko Tabs se pehle rakhein taaki report download mein error na aaye
+# Pre-calculate Heatmap for Report & Visuals
 grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
 
 # --- 5. TABS & VISUALS ---
 tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Digitizer", "📥 Export Report"])
 
-# ... (tab_viz aur tab_theory ka code wese hi rahega) ...
-
-with tab_export:
-    st.subheader("📥 Export Executive Report")
-    
-    def make_complete_report(df, rate, conc_m, d80_v, total_r, split_p, grid, x_v, y_v):
-        doc = Document()
-        doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
-        
-        # 1. Table
-        doc.add_heading('Mineral Recovery Data', level=1)
-        table = doc.add_table(rows=1, cols=len(df.columns))
-        table.style = 'Table Grid'
-        for i, col in enumerate(df.columns):
-            table.rows[0].cells[i].text = col
-        for _, row in df.iterrows():
-            cells = table.add_row().cells
-            for i, val in enumerate(row):
-                cells[i].text = str(val)
-
-        # 2. Bar Chart
-        plt.figure(figsize=(6, 4))
-        plt.bar(df["Mineral"], df["Recovery %"], color='teal')
-        buf_bar = BytesIO()
-        plt.savefig(buf_bar, format='png')
-        doc.add_picture(buf_bar, width=Inches(4))
-        plt.close()
-
-        # 3. Heatmap
-        doc.add_heading('Economic Heatmap', level=1)
-        plt.figure(figsize=(8, 5))
-        sns.heatmap(grid, xticklabels=np.round(y_v, 1), yticklabels=np.round(x_v, 0), cmap="RdYlGn")
-        buf_heat = BytesIO()
-        plt.savefig(buf_heat, format='png')
-        doc.add_picture(buf_heat, width=Inches(5))
-        plt.close()
-
-        bio = BytesIO()
-        doc.save(bio)
-        return bio.getvalue()
-
-    # Ab grid_data available hai, error nahi aayega
-    report_btn = st.download_button(
-        label="📥 Download Full Report (Word)",
-        data=make_complete_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos, grid_data, x_labels, y_labels),
-        file_name="Spiral_Digital_Twin_Report.docx",
-        key="report_dl_final"
-    )
-# --- 5. TABS & VISUALS ---
-tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Equations", "📥 Export Report"])
-
 with tab_viz:
     c1, c2, c3 = st.columns(3)
     c1.metric("Conc Flow", f"{c_mass:.2f} tph")
     c2.metric("Total Revenue", f"${total_revenue:,.2f}/hr")
-    c3.metric("Feed Size", f"{d80} µm")
+    c3.metric("Profit / hour", f"${profit_hr:,.2f}")
 
     k1, k2, k3 = st.columns(3)
     k1.metric("Throughput", f"{f_rate} tph")
     k2.metric("Cost / ton", f"${cost_per_ton:.2f}")
-    k3.metric("Profit / hour", f"${profit_hr:,.2f}")
-
-    k4, k5 = st.columns(2)
-    k4.metric("Profit / ton", f"${profit_per_ton:.2f}")
-    k5.metric("Total OPEX", f"${total_opex:,.2f}/hr")
+    k3.metric("Profit / ton", f"${profit_per_ton:.2f}")
 
     st.dataframe(df_res, use_container_width=True)
 
@@ -255,85 +143,76 @@ with tab_viz:
         fig1, ax1 = plt.subplots()
         ax1.pie(df_res["Revenue $/hr"], labels=df_res["Mineral"], autopct='%1.1f%%')
         st.pyplot(fig1)
-
     with g2:
         fig2, ax2 = plt.subplots()
-        ax2.bar(df_res["Mineral"], df_res["Recovery %"])
+        ax2.bar(df_res["Mineral"], df_res["Recovery %"], color='teal')
         ax2.set_ylabel("Recovery %")
         st.pyplot(fig2)
 
 with tab_theory:
-    st.subheader("📚 Engineering Logic")
+    st.header("🔬 Engineering Intelligence")
+    col_ins1, col_ins2 = st.columns(2)
+    with col_ins1:
+        extra_money = total_revenue * 0.01
+        st.metric("Profit Boost (per +1% Recovery)", f"${extra_money:,.2f}/hr")
+    with col_ins2:
+        breakeven_tph = total_opex / (total_revenue / f_rate) if total_revenue > 0 else 0
+        st.metric("Break-even Throughput", f"{breakeven_tph:.1f} tph")
+
+    st.write("---")
+    st.subheader("🔢 Digital Twin Digitizer")
+    digitized_df = run_digitizer(df_res, splitter_pos, f_rate)
+    st.table(digitized_df[["Mineral", "Digitized Grade", "Digitized Recovery"]])
+
+    st.write("---")
+    st.subheader("📐 Governing Equations")
     st.latex(r"M_{feed} = M_{conc} + M_{midd} + M_{tail}")
-    st.latex(r"Mass\_Pull = 10\% + (Splitter\_Position \times 10\%)")
+    st.latex(r"Mass\_Pull = 10\% + (Splitter \times 10\%)")
 
 with tab_export:
     st.subheader("📥 Export Executive Report")
-    st.info("Generating this report will include the Mineral Table, Bar Charts, and the Profitability Heatmap.")
-
-    def make_complete_report(df, rate, conc_m, d80_v, total_r, split_p, grid, x_vals, y_vals):
+    
+    def make_complete_report(df, rate, total_r, split_p, grid, x_v, y_v):
         doc = Document()
         doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
+        doc.add_paragraph(f"Operational Summary: Feed {rate} tph, Splitter {split_p}, Revenue ${total_r:,.2f}/hr")
         
-        # 1. Summary Section
-        doc.add_heading('1. Operational Summary', level=1)
-        doc.add_paragraph(f"Feed Rate: {rate} tph")
-        doc.add_paragraph(f"Feed d80: {d80_v} µm")
-        doc.add_paragraph(f"Splitter Position: {split_p}")
-        doc.add_paragraph(f"Total Revenue: ${total_r:,.2f}/hr")
-
-        # 2. Mineral Data Table
-        doc.add_heading('2. Mineral Recovery & Grade Data', level=1)
-        table = doc.add_table(rows=1, cols=len(df.columns))
-        table.style = 'Table Grid'
-        hdr_cells = table.rows[0].cells
-        for i, col in enumerate(df.columns):
-            hdr_cells[i].text = col
+        # Add Table
+        t = doc.add_table(rows=1, cols=len(df.columns))
+        t.style = 'Table Grid'
+        for i, col in enumerate(df.columns): t.rows[0].cells[i].text = col
         for _, row in df.iterrows():
-            row_cells = table.add_row().cells
-            for i, val in enumerate(row):
-                row_cells[i].text = str(val)
+            cells = t.add_row().cells
+            for i, val in enumerate(row): cells[i].text = str(val)
 
-        # 3. Bar Chart & Visuals
-        doc.add_heading('3. Performance Visuals', level=1)
-        
-        # Saving Bar Chart to Buffer
-        fig_bar, ax_bar = plt.subplots(figsize=(6, 4))
-        ax_bar.bar(df["Mineral"], df["Recovery %"], color='teal')
-        ax_bar.set_title("Recovery % by Mineral")
-        buf_bar = BytesIO()
-        plt.savefig(buf_bar, format='png')
-        buf_bar.seek(0)
-        doc.add_picture(buf_bar, width=Inches(5))
-        plt.close(fig_bar)
+        # Add Heatmap Image
+        doc.add_heading('Profitability Heatmap', level=1)
+        plt.figure(figsize=(8, 5))
+        sns.heatmap(grid, xticklabels=np.round(y_v, 1), yticklabels=np.round(x_v, 0), cmap="RdYlGn")
+        img_stream = BytesIO()
+        plt.savefig(img_stream, format='png')
+        doc.add_picture(img_stream, width=Inches(5))
+        plt.close()
 
-        # 4. Profitability Heatmap
-        doc.add_heading('4. Economic Heatmap (Profitability)', level=1)
-        fig_h, ax_h = plt.subplots(figsize=(8, 5))
-        sns.heatmap(grid, xticklabels=np.round(y_vals, 1), yticklabels=np.round(x_vals, 0), cmap="RdYlGn", ax=ax_h)
-        ax_h.set_title("Feed Rate vs Splitter Profitability")
-        buf_heat = BytesIO()
-        plt.savefig(buf_heat, format='png')
-        buf_heat.seek(0)
-        doc.add_picture(buf_heat, width=Inches(5))
-        plt.close(fig_h)
-
-        # Save Final Document
         bio = BytesIO()
         doc.save(bio)
         return bio.getvalue()
 
-    # Download Button
-    report_data = make_complete_report(
-        df_res, f_rate, c_mass, d80, total_revenue, splitter_pos, 
-        grid_data, x_labels, y_labels
-    )
-    
     st.download_button(
         label="📥 Download Full Executive Report (Word)",
-        data=report_data,
+        data=make_complete_report(df_res, f_rate, total_revenue, splitter_pos, grid_data, x_labels, y_labels),
         file_name="Spiral_Detailed_Report.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        key="download_report_final"
+        key="final_report_dl"
     )
 
+# --- HEATMAP & KPI CHECK (BOTTOM) ---
+st.write("---")
+st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
+fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
+sns.heatmap(grid_data, xticklabels=np.round(y_labels, 1), yticklabels=np.round(x_labels, 0), cmap="RdYlGn", ax=ax_heat)
+st.pyplot(fig_heat)
+
+st.markdown("### 🧠 KPI Status Check")
+for k, v in kpi_status.items():
+    if v: st.success(f"✅ {k}")
+    else: st.error(f"❌ {k}")
