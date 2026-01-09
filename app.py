@@ -197,6 +197,43 @@ with tab_viz:
     ax3.set_ylabel("$/hr")
     st.pyplot(fig3)
 
+# --- 5. TABS ---
+tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Equations", "📥 Export Report"])
+
+with tab_viz:
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Conc Flow", f"{c_mass:.2f} tph")
+    c2.metric("Total Revenue", f"${total_revenue:,.2f}/hr")
+    c3.metric("Feed Size", f"{d80} µm")
+
+    k1, k2, k3 = st.columns(3)
+    k1.metric("Throughput", f"{f_rate} tph")
+    k2.metric("Cost / ton", f"${cost_per_ton:.2f}")
+    k3.metric("Profit / hour", f"${profit_hr:,.2f}")
+
+    k4, k5 = st.columns(2)
+    k4.metric("Profit / ton", f"${profit_per_ton:.2f}")
+    k5.metric("Total OPEX", f"${total_opex:,.2f}/hr")
+
+    st.dataframe(df_res, use_container_width=True)
+
+    g1, g2 = st.columns(2)
+    with g1:
+        fig1, ax1 = plt.subplots()
+        ax1.pie(df_res["Revenue $/hr"], labels=df_res["Mineral"], autopct='%1.1f%%')
+        st.pyplot(fig1)
+
+    with g2:
+        fig2, ax2 = plt.subplots()
+        ax2.bar(df_res["Mineral"], df_res["Recovery %"])
+        ax2.set_ylabel("Recovery %")
+        st.pyplot(fig2)
+
+    fig3, ax3 = plt.subplots()
+    ax3.bar(["Revenue", "OPEX", "Profit"], [total_revenue, total_opex, profit_hr])
+    ax3.set_ylabel("$/hr")
+    st.pyplot(fig3)
+
 with tab_theory:
     st.subheader("📚 Engineering Logic")
     st.latex(r"M_{feed} = M_{conc} + M_{midd} + M_{tail}")
@@ -204,14 +241,12 @@ with tab_theory:
     st.info(f"Operating at {f_rate} tph with splitter position {splitter_pos}")
 
 with tab_export:
-    st.subheader("📥 Export Engineering Report")
-    
+    st.subheader("📥 Export Report")
     def make_report(df, rate, conc_m, d80_v, total_r, split_p):
         doc = Document()
         doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
         doc.add_paragraph(f"Feed: {rate} tph | d80: {d80_v} um | Splitter: {split_p}")
         
-        # Plotting for Report
         fig_r, ax_r = plt.subplots()
         ax_r.pie(df["Revenue $/hr"], labels=df["Mineral"], autopct='%1.1f%%')
         img_s = BytesIO()
@@ -219,7 +254,6 @@ with tab_export:
         img_s.seek(0)
         doc.add_picture(img_s, width=Inches(5))
         
-        # Table for Report
         t = doc.add_table(rows=1, cols=len(df.columns))
         t.style = 'Table Grid'
         for i, col in enumerate(df.columns):
@@ -233,7 +267,6 @@ with tab_export:
         doc.save(bio)
         return bio.getvalue()
 
-    # Report Download Button
     st.download_button(
         label="📥 Download Full Executive Report (Word)",
         data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
@@ -241,14 +274,11 @@ with tab_export:
         key="final_report_button"
     )
 
-# --- Ye sections Tabs se bahar hain (Main Page par niche nazar aayenge) ---
 st.write("---")
 st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
 
-# Data generate karna
 grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
 
-# Plotting Heatmap
 fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
 sns.heatmap(
     grid_data, 
@@ -261,8 +291,6 @@ sns.heatmap(
 ax_heat.set_xlabel("Splitter Position")
 ax_heat.set_ylabel("Feed Rate (tph)")
 st.pyplot(fig_heat)
-
-st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka matlab hai ke aapka OPEX revenue se zyada hai.")
 
 st.markdown("### 🧠 KPI Status Check")
 for k, v in kpi_status.items():
