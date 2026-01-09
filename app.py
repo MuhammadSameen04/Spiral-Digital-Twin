@@ -258,7 +258,6 @@ st.download_button(
     file_name="Spiral_Digital_Twin_Report.docx",
     key="final_report_button"
 )
-
 st.markdown("### 🧠 KPI Status Check")
 
 for k, v in kpi_status.items():
@@ -266,6 +265,7 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
 
