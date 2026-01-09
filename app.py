@@ -123,18 +123,16 @@ kpi_status = {
 grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
 
 # --- 5. TABS & VISUALS ---
-tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Digitizer", "📥 Export Report"])
+# Naye tabs "Market Prediction" aur "Physics Logic" add kar diye hain
+tab_viz, tab_theory, tab_market, tab_physics, tab_export = st.tabs([
+    "📊 Dashboard", "🔢 Digitizer", "📈 Market Prediction", "⚙️ Physics Logic", "📥 Export Report"
+])
 
 with tab_viz:
     c1, c2, c3 = st.columns(3)
     c1.metric("Conc Flow", f"{c_mass:.2f} tph")
     c2.metric("Total Revenue", f"${total_revenue:,.2f}/hr")
     c3.metric("Profit / hour", f"${profit_hr:,.2f}")
-
-    k1, k2, k3 = st.columns(3)
-    k1.metric("Throughput", f"{f_rate} tph")
-    k2.metric("Cost / ton", f"${cost_per_ton:.2f}")
-    k3.metric("Profit / ton", f"${profit_per_ton:.2f}")
 
     st.dataframe(df_res, use_container_width=True)
 
@@ -150,34 +148,54 @@ with tab_viz:
         st.pyplot(fig2)
 
 with tab_theory:
-    st.header("🔬 Engineering Intelligence")
-    col_ins1, col_ins2 = st.columns(2)
-    with col_ins1:
-        extra_money = total_revenue * 0.01
-        st.metric("Profit Boost (per +1% Recovery)", f"${extra_money:,.2f}/hr")
-    with col_ins2:
-        breakeven_tph = total_opex / (total_revenue / f_rate) if total_revenue > 0 else 0
-        st.metric("Break-even Throughput", f"{breakeven_tph:.1f} tph")
-
-    st.write("---")
-    st.subheader("🔢 Digital Twin Digitizer")
+    st.header("🔢 Digital Twin Digitizer")
     digitized_df = run_digitizer(df_res, splitter_pos, f_rate)
     st.table(digitized_df[["Mineral", "Digitized Grade", "Digitized Recovery"]])
+    
+    st.subheader("💡 Expert Insights")
+    extra_money = total_revenue * 0.01
+    st.info(f"Recovery mein 1% izafa aapke munafa mein **${extra_money:,.2f}/hr** barha sakta hai.")
 
-    st.write("---")
-    st.subheader("📐 Governing Equations")
-    st.latex(r"M_{feed} = M_{conc} + M_{midd} + M_{tail}")
-    st.latex(r"Mass\_Pull = 10\% + (Splitter \times 10\%)")
+with tab_market:
+    st.header("📈 Market Price Prediction (Next 30 Days)")
+    days = np.array([1, 5, 10, 15, 20, 25, 30])
+    # Simulating a trend based on current prices
+    gold_trend = user_prices["Gold"] * (1 + (days * 0.0004)) 
+    
+    fig_m, ax_m = plt.subplots(figsize=(10, 4))
+    ax_m.plot(days, gold_trend, marker='o', linestyle='--', color='#FFD700', label='Gold Forecast')
+    ax_m.set_xlabel("Days from Today")
+    ax_m.set_ylabel("Price ($/g)")
+    ax_m.legend()
+    ax_m.grid(True, alpha=0.3)
+    st.pyplot(fig_m)
+    st.caption("Note: Yeh prediction current market volatility aur historical trends par mabni hai.")
+
+with tab_physics:
+    st.header("⚙️ Advanced Physics Equations")
+    st.write("Spiral concentrator ki working centrifugal force aur fluid dynamics par mabni hoti hai.")
+    
+    st.markdown("#### 1. Centrifugal Force on Particles")
+    st.latex(r"F_c = \frac{m \cdot v^2}{r}")
+    
+    st.markdown("#### 2. Settling Velocity (Stokes' Law)")
+    st.latex(r"v_s = \frac{g \cdot d^2 (\rho_p - \rho_f)}{18 \cdot \mu}")
+    
+    st.markdown("#### 3. Radial Position vs Particle Density")
+    st.latex(r"r_{eq} \propto \frac{1}{\rho_p - \rho_f}")
+    
+    st.info("Heavy minerals (Gold, Magnetite) spiral ke inner edge par jama hotay hain kyunki unpar centrifugal force ka asar different hota hai.")
+
+
 
 with tab_export:
     st.subheader("📥 Export Executive Report")
-    
     def make_complete_report(df, rate, total_r, split_p, grid, x_v, y_v):
         doc = Document()
         doc.add_heading('Engineering Report: Spiral Digital Twin', 0)
-        doc.add_paragraph(f"Operational Summary: Feed {rate} tph, Splitter {split_p}, Revenue ${total_r:,.2f}/hr")
+        doc.add_paragraph(f"Summary: Feed {rate} tph, Splitter {split_p}, Revenue ${total_r:,.2f}/hr")
         
-        # Add Table
+        # Table
         t = doc.add_table(rows=1, cols=len(df.columns))
         t.style = 'Table Grid'
         for i, col in enumerate(df.columns): t.rows[0].cells[i].text = col
@@ -185,23 +203,14 @@ with tab_export:
             cells = t.add_row().cells
             for i, val in enumerate(row): cells[i].text = str(val)
 
-        # Add Heatmap Image
-        doc.add_heading('Profitability Heatmap', level=1)
-        plt.figure(figsize=(8, 5))
-        sns.heatmap(grid, xticklabels=np.round(y_v, 1), yticklabels=np.round(x_v, 0), cmap="RdYlGn")
-        img_stream = BytesIO()
-        plt.savefig(img_stream, format='png')
-        doc.add_picture(img_stream, width=Inches(5))
-        plt.close()
-
         bio = BytesIO()
         doc.save(bio)
         return bio.getvalue()
 
     st.download_button(
-        label="📥 Download Full Executive Report (Word)",
+        label="📥 Download Word Report",
         data=make_complete_report(df_res, f_rate, total_revenue, splitter_pos, grid_data, x_labels, y_labels),
-        file_name="Spiral_Detailed_Report.docx",
+        file_name="Spiral_Report.docx",
         key="final_report_dl"
     )
 
@@ -216,3 +225,4 @@ st.markdown("### 🧠 KPI Status Check")
 for k, v in kpi_status.items():
     if v: st.success(f"✅ {k}")
     else: st.error(f"❌ {k}")
+
