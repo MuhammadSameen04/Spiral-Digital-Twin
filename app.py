@@ -82,9 +82,6 @@ target_throughput = st.sidebar.slider(
     "Target Throughput (tph)", 100, 500, f_rate
 )
 
-target_profit_margin = st.sidebar.slider(
-    "Target Profit Margin (%)", 0, 60, 25
-)
 
 target_profit_hr = st.sidebar.number_input(
     "Target Profit ($/hr)", value=5000.0
