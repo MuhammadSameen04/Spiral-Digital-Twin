@@ -256,7 +256,8 @@ st.download_button(
     label="📥 Download Full Executive Report (Word)",
     data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
     file_name="Spiral_Digital_Twin_Report.docx",
-    key="final_report_button")
+    key="final_report_button"
+) # <--- Ye bracket lazmi hona chahiye
 
 st.markdown("### 🧠 KPI Status Check")
 
@@ -265,6 +266,7 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
 
