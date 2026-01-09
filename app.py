@@ -254,7 +254,7 @@ st.pyplot(fig_heat)
 st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka matlab hai ke aapka OPEX revenue se zyada hai.")
 
    # --- Is niche wale block ko check karein aur "key" add karein ---
- st.download_button(
+st.download_button(
         label="📥 Download Full Executive Report (Word)",
         data=make_report(
             df_res, f_rate, c_mass, d80, total_revenue, splitter_pos, 
@@ -271,5 +271,6 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
