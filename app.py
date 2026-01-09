@@ -82,18 +82,24 @@ kpi_status = {
     "Profit/hr OK": profit_hr >= target_profit_hr
 }
 
-# ----------- ADDITION: KPI TARGETS (SIDEBAR ONLY) -----------
-st.sidebar.markdown("---")
-st.sidebar.header("📌 KPI Target Controls")
+# ----------- SAHI JAGAH: KPI EVALUATION -----------
+# Yeh engine run hone ke baad hona chahiye taaki total_revenue maujood ho
 
-target_throughput = st.sidebar.slider(
-    "Target Throughput (tph)", 100, 500, f_rate
-)
+# Pehle Profit calculate karein
+profit_hr = total_revenue - total_opex
 
+# Phir Margin calculate karein
+actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
 
-target_profit_hr = st.sidebar.number_input(
-    "Target Profit ($/hr)", value=5000.0
-)
+# KPI Status Check (Make sure variables names match your sidebar)
+kpi_status = {
+    "Throughput OK": f_rate >= target_throughput,
+    "Profit Margin OK": actual_margin >= target_margin, # Sidebar mein aapne target_margin likha hai
+    "Profit/hr OK": profit_hr >= target_profit_hr
+}
+
+cost_per_ton = total_opex / f_rate if f_rate > 0 else 0
+profit_per_ton = profit_hr / f_rate if f_rate > 0 else 0
 
 
 # --- 4. ENGINE LOGIC ---
@@ -272,6 +278,7 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
 
 
