@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,15 +6,13 @@ import seaborn as sns
 from docx import Document
 from docx.shared import Inches
 from io import BytesIO
-import base64
-
-# --- MAIN PAGE HEADERS ---
-st.title("🌀 Ultra Digital Twin: Attock Spiral Concentrator")
-st.markdown("### Process Optimization, Economics & KPI Performance Dashboard")
-st.write("---")
 
 # --- 1. SETTINGS & STYLING ---
 st.set_page_config(page_title="Ultra Spiral Digital Twin", layout="wide")
+
+st.title("🌀 Ultra Digital Twin: Attock Spiral Concentrator")
+st.markdown("### Process Optimization, Economics & KPI Performance Dashboard")
+st.write("---")
 
 st.markdown("""
     <style>
@@ -57,10 +54,8 @@ user_prices = {
     "Monazite": st.sidebar.number_input("Monazite ($/t)", value=1500.0)
 }
 
-# ----------- ADDITION: ECONOMICS / OPEX (NO CHANGE ABOVE) -----------
 st.sidebar.markdown("---")
 st.sidebar.header("💼 Operating Cost (OPEX)")
-
 labour_cost = st.sidebar.number_input("Labour Cost ($/hr)", value=120.0)
 power_kw = st.sidebar.number_input("Installed Power (kW)", value=150.0)
 power_rate = st.sidebar.number_input("Electricity Cost ($/kWh)", value=0.12)
@@ -69,38 +64,10 @@ maintenance_cost = st.sidebar.number_input("Maintenance Cost ($/hr)", value=40.0
 mining_cost = st.sidebar.number_input("Mining Cost ($/ton)", value=8.0)
 lease_tax = st.sidebar.number_input("Lease / Rent / Taxes ($/hr)", value=25.0)
 
-st.sidebar.markdown("### 📈 Margin Control")
+st.sidebar.markdown("### 📈 KPI Targets")
 target_margin = st.sidebar.slider("Target Profit Margin (%)", 0, 60, 25)
-
-# ----------- ADDITION: KPI EVALUATION -----------
-
-actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
-
-kpi_status = {
-    "Throughput OK": f_rate >= target_throughput,
-    "Profit Margin OK": actual_margin >= target_profit_margin,
-    "Profit/hr OK": profit_hr >= target_profit_hr
-}
-
-# ----------- SAHI JAGAH: KPI EVALUATION -----------
-# Yeh engine run hone ke baad hona chahiye taaki total_revenue maujood ho
-
-# Pehle Profit calculate karein
-profit_hr = total_revenue - total_opex
-
-# Phir Margin calculate karein
-actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
-
-# KPI Status Check (Make sure variables names match your sidebar)
-kpi_status = {
-    "Throughput OK": f_rate >= target_throughput,
-    "Profit Margin OK": actual_margin >= target_margin, # Sidebar mein aapne target_margin likha hai
-    "Profit/hr OK": profit_hr >= target_profit_hr
-}
-
-cost_per_ton = total_opex / f_rate if f_rate > 0 else 0
-profit_per_ton = profit_hr / f_rate if f_rate > 0 else 0
-
+target_throughput = st.sidebar.slider("Target Throughput (tph)", 100, 500, 300)
+target_profit_hr = st.sidebar.number_input("Target Profit ($/hr)", value=5000.0)
 
 # --- 4. ENGINE LOGIC ---
 def ultra_engine(rate, targets, prices, split_pos, size_d80):
@@ -128,36 +95,31 @@ def ultra_engine(rate, targets, prices, split_pos, size_d80):
         })
     return pd.DataFrame(results), conc_mass, total_rev
 
-# --- PEHLE ENGINE CHALAYEIN ---
+# --- CALCULATIONS (ORDER FIXED HERE) ---
+
+# 1. Run Engine first to get revenue
 df_res, c_mass, total_revenue = ultra_engine(f_rate, user_targets, user_prices, splitter_pos, d80)
 
-# --- PHIR ECONOMICS CALCULATE KAREIN ---
+# 2. Calculate OPEX
 power_cost = power_kw * power_rate
 mining_cost_hr = f_rate * mining_cost
+total_opex = (labour_cost + power_cost + water_cost + maintenance_cost + mining_cost_hr + lease_tax)
 
-total_opex = (
-    labour_cost +
-    power_cost +
-    water_cost +
-    maintenance_cost +
-    mining_cost_hr +
-    lease_tax
-)
-
+# 3. Calculate Profit and Margin (Now variables are defined)
 profit_hr = total_revenue - total_opex
-
-# Ab total_revenue define ho chuka hai, margin calculate ho jayega
 actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
 
+# 4. KPI Status check using correct variable names
 kpi_status = {
     "Throughput OK": f_rate >= target_throughput,
     "Profit Margin OK": actual_margin >= target_margin,
     "Profit/hr OK": profit_hr >= target_profit_hr
 }
-cost_per_ton = total_opex / f_rate
-profit_per_ton = profit_hr / f_rate
 
-# Heatmap function (Iske variables economics ke baad aane chahiye)
+cost_per_ton = total_opex / f_rate if f_rate > 0 else 0
+profit_per_ton = profit_hr / f_rate if f_rate > 0 else 0
+
+# Heatmap function
 def generate_heatmap_data(targets, prices, d80, solids):
     rates = np.linspace(100, 500, 10)
     splits = np.linspace(0, 2, 10)
@@ -169,7 +131,7 @@ def generate_heatmap_data(targets, prices, d80, solids):
             grid[i, j] = t_rev - t_opex
     return grid, rates, splits
 
-# --- 5. TABS ---
+# --- 5. TABS & VISUALS ---
 tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Equations", "📥 Export Report"])
 
 with tab_viz:
@@ -201,16 +163,10 @@ with tab_viz:
         ax2.set_ylabel("Recovery %")
         st.pyplot(fig2)
 
-    fig3, ax3 = plt.subplots()
-    ax3.bar(["Revenue", "OPEX", "Profit"], [total_revenue, total_opex, profit_hr])
-    ax3.set_ylabel("$/hr")
-    st.pyplot(fig3)
-
 with tab_theory:
     st.subheader("📚 Engineering Logic")
     st.latex(r"M_{feed} = M_{conc} + M_{midd} + M_{tail}")
     st.latex(r"Mass\_Pull = 10\% + (Splitter\_Position \times 10\%)")
-    st.info(f"Operating at {f_rate} tph with splitter position {splitter_pos}")
 
 with tab_export:
     def make_report(df, rate, conc_m, d80_v, total_r, split_p):
@@ -225,60 +181,25 @@ with tab_export:
         img_s.seek(0)
         doc.add_picture(img_s, width=Inches(5))
         
-        t = doc.add_table(rows=1, cols=len(df.columns))
-        t.style = 'Table Grid'
-        for i, col in enumerate(df.columns):
-            t.cell(0, i).text = col
-        for _, row in df.iterrows():
-            cells = t.add_row().cells
-            for i, val in enumerate(row):
-                cells[i].text = str(val)
-        
         bio = BytesIO()
         doc.save(bio)
         return bio.getvalue()
 
-st.write("---")
-st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
-
-# Data generate karna
-grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
-
-# Plotting
-fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
-sns.heatmap(
-    grid_data, 
-    annot=False, 
-    xticklabels=np.round(y_labels, 1), 
-    yticklabels=np.round(x_labels, 0), 
-    cmap="RdYlGn", 
-    ax=ax_heat
-)
-ax_heat.set_xlabel("Splitter Position")
-ax_heat.set_ylabel("Feed Rate (tph)")
-st.pyplot(fig_heat)
-
-st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka matlab hai ke aapka OPEX revenue se zyada hai.")
-
-   # --- Is niche wale block ko check karein aur "key" add karein ---
-st.download_button(
+    st.download_button(
         label="📥 Download Full Executive Report (Word)",
-        data=make_report(
-            df_res, f_rate, c_mass, d80, total_revenue, splitter_pos, 
-            total_opex, profit_hr, actual_margin, k_status, grid_data, x_axis, y_axis
-        ),
+        data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
         file_name="Spiral_Digital_Twin_Report.docx",
-        key="final_report_button"  # <--- Ye line error khatam kar degi
+        key="final_report_button"
     )
 
+st.write("---")
+st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
+grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
+fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
+sns.heatmap(grid_data, xticklabels=np.round(y_labels, 1), yticklabels=np.round(x_labels, 0), cmap="RdYlGn", ax=ax_heat)
+st.pyplot(fig_heat)
+
 st.markdown("### 🧠 KPI Status Check")
-
 for k, v in kpi_status.items():
-    if v:
-        st.success(f"✅ {k}")
-    else:
-        st.error(f"❌ {k}")
-
-
-
-
+    if v: st.success(f"✅ {k}")
+    else: st.error(f"❌ {k}")
