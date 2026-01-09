@@ -130,6 +130,53 @@ def generate_heatmap_data(targets, prices, d80, solids):
             t_opex = labour_cost + (power_kw * power_rate) + water_cost + maintenance_cost + (r * mining_cost) + lease_tax
             grid[i, j] = t_rev - t_opex
     return grid, rates, splits
+    
+# --- ADVANCED DIGITIZER LOGIC ---
+def run_digitizer(df, splitter, rate):
+    d_df = df.copy()
+    # Logic: Splitter movement affects Grade and Recovery inversely
+    d_df["Digitized Grade"] = d_df["Conc Grade"] * (1 + (splitter * 0.02))
+    d_df["Digitized Recovery"] = d_df["Recovery %"] * (1 - (splitter * 0.01))
+    d_df["Digitized TPH"] = (rate * (d_df["Digitized Recovery"]/100)) * (FEED_GRADES["Gold"]/100) # Simplified
+    return d_df
+
+# --- SENSITIVITY INSIGHTS ---
+def get_expert_insights(total_rev, current_rec_avg):
+    # 1% Recovery Increase Calculation
+    extra_profit_per_1pct = total_rev * 0.01
+    return extra_profit_per_1pct
+with tab_theory:
+    st.header("🔬 Engineering Intelligence & Digitizer")
+    
+    # --- EXPERT INSIGHTS SECTION ---
+    st.subheader("💡 Expert Insights (Financial Sensitivity)")
+    extra_money = get_expert_insights(total_revenue, df_res["Recovery %"].mean())
+    
+    col_ins1, col_ins2 = st.columns(2)
+    with col_ins1:
+        st.metric("Profit Boost (per +1% Recovery)", f"${extra_money:,.2f}/hr")
+        st.write(f"Agar aap plant ki overall recovery **1%** barha lete hain, toh aapka munafa mahana **${extra_money*24*30:,.0f}** barh sakta hai.")
+    
+    with col_ins2:
+        breakeven_tph = total_opex / (total_revenue / f_rate) if total_revenue > 0 else 0
+        st.metric("Break-even Throughput", f"{breakeven_tph:.1f} tph")
+        st.write(f"Aapko kam az kam **{breakeven_tph:.1f} tph** feed rate chahiye taaki aapka OPEX cover ho sake.")
+
+    # --- DIGITIZER SECTION ---
+    st.write("---")
+    st.subheader("🔢 Digital Twin Digitizer (Grade-Recovery-TPH)")
+    st.caption("Adjusted values based on current Splitter Position and Feed Rate")
+    
+    digitized_results = run_digitizer(df_res, splitter_pos, f_rate)
+    
+    # Display Digitized Table
+    st.table(digitized_results[["Mineral", "Digitized Grade", "Digitized Recovery", "Revenue $/hr"]])
+
+    # --- EQUATIONS ---
+    st.write("---")
+    st.subheader("📐 Governing Equations")
+    st.latex(r"M_{conc} = M_{feed} \times (0.10 + 0.10 \times \text{Splitter})")
+    st.latex(r"Revenue\ Sensitivity = \sum (Grade_i \times Price_i) \times 0.01")
 
 # --- 5. TABS & VISUALS ---
 tab_viz, tab_theory, tab_export = st.tabs(["📊 Dashboard", "📖 Theory & Equations", "📥 Export Report"])
@@ -203,3 +250,4 @@ st.markdown("### 🧠 KPI Status Check")
 for k, v in kpi_status.items():
     if v: st.success(f"✅ {k}")
     else: st.error(f"❌ {k}")
+
