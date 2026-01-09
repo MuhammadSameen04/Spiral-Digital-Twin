@@ -16,15 +16,13 @@ st.write("---")
 # --- 1. SETTINGS & STYLING ---
 st.set_page_config(page_title="Ultra Spiral Digital Twin", layout="wide")
 
-st.markdown("""
-<style>
+st.markdown("""<style>
 .stApp { background-color: #0e1117; color: #ffffff; }
 [data-testid="stSidebar"] { background-color: #1e2a38; color: white; }
 [data-testid="stSidebar"] .stSlider label { color: #ffcc00 !important; }
 [data-testid="stMetricValue"] { color: #00ffcc !important; font-size: 30px; }
 h1, h2, h3 { color: #ff4b4b; font-family: 'Arial'; }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 # --- 2. BASE DATA ---
 FEED_GRADES = {"Gold": 0.80, "Magnetite": 6.0, "Ilmenite": 1.5, "Rutile": 0.30, "Monazite": 0.15}
@@ -56,7 +54,7 @@ user_prices = {
     "Monazite": st.sidebar.number_input("Monazite ($/t)", value=1500.0)
 }
 
-# ----------- ADDITION: ECONOMICS / OPEX (NO CHANGE ABOVE) -----------
+# ----------- ADDITION: ECONOMICS / OPEX -----------
 st.sidebar.markdown("---")
 st.sidebar.header("💼 Operating Cost (OPEX)")
 
@@ -71,9 +69,7 @@ lease_tax = st.sidebar.number_input("Lease / Rent / Taxes ($/hr)", value=25.0)
 st.sidebar.markdown("### 📈 Margin Control")
 target_margin = st.sidebar.slider("Target Profit Margin (%)", 0, 60, 25)
 
-# ----------- ADDITION: KPI EVALUATION -----------
-
-# ----------- ADDITION: KPI TARGETS (SIDEBAR ONLY) -----------
+# ----------- KPI TARGETS (SIDEBAR ONLY) -----------
 st.sidebar.markdown("---")
 st.sidebar.header("📌 KPI Target Controls")
 
@@ -114,38 +110,23 @@ def ultra_engine(rate, targets, prices, split_pos, size_d80):
 df_res, c_mass, total_revenue = ultra_engine(f_rate, user_targets, user_prices, splitter_pos, d80)
 
 def generate_heatmap_data(targets, prices, d80, solids):
-    # Variables for heatmap axis
-    rates = np.linspace(100, 500, 10)  # Feed Rate range
-    splits = np.linspace(0, 2, 10)     # Splitter range
+    rates = np.linspace(100, 500, 10)
+    splits = np.linspace(0, 2, 10)
     grid = np.zeros((10, 10))
 
     for i, r in enumerate(rates):
         for j, s in enumerate(splits):
-            # Engine ko call karke profit nikalna
             _, _, total_rev = ultra_engine(r, targets, prices, s, d80)
-            
-            # OPEX Calculate karna usi logic se jo aapne niche likhi hai
             p_cost = power_kw * power_rate
             m_cost_hr = r * mining_cost
             total_opex = labour_cost + p_cost + water_cost + maintenance_cost + m_cost_hr + lease_tax
-            
             grid[i, j] = total_rev - total_opex
-            
     return grid, rates, splits
 
-# ----------- ADDITION: ECONOMICS CALCULATION -----------
 power_cost = power_kw * power_rate
 mining_cost_hr = f_rate * mining_cost
 
-total_opex = (
-    labour_cost +
-    power_cost +
-    water_cost +
-    maintenance_cost +
-    mining_cost_hr +
-    lease_tax
-)
-
+total_opex = labour_cost + power_cost + water_cost + maintenance_cost + mining_cost_hr + lease_tax
 profit_hr = total_revenue - total_opex
 actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
 
@@ -205,33 +186,20 @@ with tab_export:
     def make_report(df, rate, conc_m, d80_v, total_r, split_p):
         doc = Document()
         doc.add_heading("Engineering Report: Spiral Digital Twin", 0)
+        doc.add_paragraph(f"Feed Rate: {rate} tph | d80: {d80_v} µm | Splitter Position: {split_p}")
 
-        doc.add_paragraph(
-            f"Feed Rate: {rate} tph | d80: {d80_v} µm | Splitter Position: {split_p}"
-        )
-
-        # Revenue Pie Chart
         fig_r, ax_r = plt.subplots()
-        ax_r.pie(
-            df["Revenue $/hr"],
-            labels=df["Mineral"],
-            autopct="%1.1f%%"
-        )
-
+        ax_r.pie(df["Revenue $/hr"], labels=df["Mineral"], autopct="%1.1f%%")
         img_s = BytesIO()
         plt.savefig(img_s, format="png", bbox_inches="tight")
         plt.close(fig_r)
         img_s.seek(0)
-
         doc.add_picture(img_s, width=Inches(5))
 
-        # Table
         table = doc.add_table(rows=1, cols=len(df.columns))
         table.style = "Table Grid"
-
         for i, col in enumerate(df.columns):
             table.cell(0, i).text = str(col)
-
         for _, row in df.iterrows():
             cells = table.add_row().cells
             for i, val in enumerate(row):
@@ -242,55 +210,28 @@ with tab_export:
         bio.seek(0)
         return bio.getvalue()
 
-
 st.write("---")
 st.subheader("🔥 Profitability Heatmap (Feed Rate vs Splitter)")
 
-# Generate data
-grid_data, x_labels, y_labels = generate_heatmap_data(
-    user_targets,
-    user_prices,
-    d80,
-    solids
-)
+grid_data, x_labels, y_labels = generate_heatmap_data(user_targets, user_prices, d80, solids)
 
-# Plot heatmap
 fig_heat, ax_heat = plt.subplots(figsize=(10, 6))
-sns.heatmap(
-    grid_data,
-    annot=False,
-    xticklabels=np.round(y_labels, 1),
-    yticklabels=np.round(x_labels, 0),
-    cmap="RdYlGn",
-    ax=ax_heat
-)
-
+sns.heatmap(grid_data, annot=False, xticklabels=np.round(y_labels, 1),
+            yticklabels=np.round(x_labels, 0), cmap="RdYlGn", ax=ax_heat)
 ax_heat.set_xlabel("Splitter Position")
 ax_heat.set_ylabel("Feed Rate (tph)")
 st.pyplot(fig_heat)
 
-st.info(
-    "💡 **Tip:** Green area sab se zyada profit dikhata hai. "
-    "Red area ka matlab hai ke OPEX, revenue se zyada hai."
-)
+st.info("💡 **Tip:** Green area sab se zyada profit dikhata hai. Red area ka matlab hai ke OPEX, revenue se zyada hai.")
 
 st.download_button(
     label="📥 Download Full Executive Report (Word)",
-    data=make_report(
-        df_res,
-        f_rate,
-        c_mass,
-        d80,
-        total_revenue,
-        splitter_pos
-    ),
+    data=make_report(df_res, f_rate, c_mass, d80, total_revenue, splitter_pos),
     file_name="Spiral_Digital_Twin_Report.docx",
     key="final_report_button"
 )
 
-
 st.markdown("### 🧠 KPI Status Check")
-
 for k, v in kpi_status.items():
     if v:
         st.success(f"✅ {k}")
