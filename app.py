@@ -146,9 +146,6 @@ def get_expert_insights(total_rev, current_rec_avg):
     extra_profit_per_1pct = total_rev * 0.01
     return extra_profit_per_1pct
     
-with tab_theory:
-    st.header("🔬 Engineering Intelligence & Digitizer")
-    
     # --- EXPERT INSIGHTS SECTION ---
     st.subheader("💡 Expert Insights (Financial Sensitivity)")
     extra_money = get_expert_insights(total_revenue, df_res["Recovery %"].mean())
@@ -251,5 +248,6 @@ st.markdown("### 🧠 KPI Status Check")
 for k, v in kpi_status.items():
     if v: st.success(f"✅ {k}")
     else: st.error(f"❌ {k}")
+
 
 
