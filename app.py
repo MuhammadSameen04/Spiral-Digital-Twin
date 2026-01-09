@@ -73,13 +73,7 @@ target_margin = st.sidebar.slider("Target Profit Margin (%)", 0, 60, 25)
 
 # ----------- ADDITION: KPI EVALUATION -----------
 
-actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
 
-kpi_status = {
-    "Throughput OK": f_rate >= target_throughput,
-    "Profit Margin OK": actual_margin >= target_profit_margin,
-    "Profit/hr OK": profit_hr >= target_profit_hr
-}
 
 # ----------- ADDITION: KPI TARGETS (SIDEBAR ONLY) -----------
 st.sidebar.markdown("---")
@@ -159,6 +153,13 @@ total_opex = (
 )
 
 profit_hr = total_revenue - total_opex
+actual_margin = (profit_hr / total_revenue) * 100 if total_revenue > 0 else 0
+
+kpi_status = {
+    "Throughput OK": f_rate >= target_throughput,
+    "Profit Margin OK": actual_margin >= target_profit_margin,
+    "Profit/hr OK": profit_hr >= target_profit_hr
+}
 cost_per_ton = total_opex / f_rate
 profit_per_ton = profit_hr / f_rate
 
@@ -271,4 +272,5 @@ for k, v in kpi_status.items():
         st.success(f"✅ {k}")
     else:
         st.error(f"❌ {k}")
+
 
